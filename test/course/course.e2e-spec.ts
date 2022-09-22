@@ -10,6 +10,8 @@ import {TypeOrmModule} from '@nestjs/typeorm'
 const { uniqueNamesGenerator, names, NumberDictionary, adjectives, languages } = require('unique-names-generator');
 
 describe('Course Module (e2e)', () => {
+  let basic_app: INestApplication;
+  let courseBasicRepository
   let app: INestApplication;
   let courseRepository
   let studentRepository
@@ -42,6 +44,28 @@ describe('Course Module (e2e)', () => {
   
 
   beforeAll(async () => {
+    const moduleBasicFixture: TestingModule = await Test.createTestingModule({
+      imports: [TypeOrmModule.forRoot({
+        type: "postgres",
+        host: 'localhost',
+        port: 5432,
+        username: 'postgres',
+        password: 'boburbek',
+        database: 'postgres',
+        entities: [CourseEntity],
+        synchronize: true
+      }), CourseModule],
+    }).compile();
+
+    basic_app = moduleBasicFixture.createNestApplication();
+    await basic_app.init();
+    courseBasicRepository = moduleBasicFixture.get<CourseRepository>(CourseRepository)
+    try{
+      await courseBasicRepository.query('CREATE DATABASE testdb')
+    }catch(err){
+      await courseBasicRepository.query(`SELECT 'CREATE DATABASE testdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'testdb')`)
+    }
+    basic_app.close()
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [TypeOrmModule.forRoot({
         type: "postgres",
@@ -86,13 +110,6 @@ describe('Course Module (e2e)', () => {
       .expect(200)
   });
   
-  it('/purchase-course-count/:id (GET)  => { GET PURCHASE }', async() => {
-    const response = request(app.getHttpServer())
-      .get(`/purchase-course-count/${defaultStudentID}`)
-      .expect(200)
-      
-  });
-  
   it('/purchase-course-count/:id (GET)  => { GET PURCHASE => 404 }', async() => {
     return request(app.getHttpServer())
       .get(`/purchase-course-count/${invalidNumber}`)
@@ -133,15 +150,15 @@ describe('Course Module (e2e)', () => {
           .expect(200)  
       });
      
-    //   it(`/student/delete/:id (DELETE)  => { DELETE => 400 }`, async() => {
-    //     return request(app.getHttpServer())
-    //       .delete(`/student/delete/4214212`)
-    //       .expect(400)  
-    //   });
+      it(`/course/delete/:id (DELETE)  => { DELETE => 400 }`, async() => {
+        return request(app.getHttpServer())
+          .delete(`/course/delete/${invalidNumber}`)
+          .expect(400)  
+      });
 
   afterAll(async () => {
-    await courseRepository.query('DELETE FROM course_entity');
-    await studentRepository.query('DELETE FROM student_entity');
+    await courseRepository.query('DROP TABLE course_entity');
+    await studentRepository.query('DROP TABLE student_entity');
     app.close()
   });
 });

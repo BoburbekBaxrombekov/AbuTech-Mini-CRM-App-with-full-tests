@@ -27,7 +27,7 @@ export class CourseService {
         const foundStudent = await this.studentRepository.customFindOne(id)
         if(foundStudent.length > 0){
             const purchaseCourse = JSON.parse(foundStudent[0]["courses"])
-            if(purchaseCourse.length >= 1){
+            if(purchaseCourse.length > 0){
                 const newArray = []
                 for(let i = 0; i < purchaseCourse.length; i++){
                     const foundCourse = await this.courseRepository.customFindOne(purchaseCourse[i])
@@ -42,7 +42,6 @@ export class CourseService {
         }else{
             throw new NotFoundException()
         }
-        
     }
     async create(dto){
         const createdCourse =  await this.courseRepository.customSave({

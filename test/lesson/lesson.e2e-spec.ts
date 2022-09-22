@@ -10,6 +10,8 @@ import {TypeOrmModule} from '@nestjs/typeorm'
 const { uniqueNamesGenerator, names, NumberDictionary, languages } = require('unique-names-generator');
 
 describe('Lesson Module (e2e)', () => {
+  let basic_app: INestApplication;
+  let lessonBasicRepository
   let app: INestApplication;
   let lessonRepository
   let courseRepository
@@ -32,6 +34,29 @@ describe('Lesson Module (e2e)', () => {
   
 
   beforeAll(async () => {
+    const moduleBasicFixture: TestingModule = await Test.createTestingModule({
+      imports: [TypeOrmModule.forRoot({
+        type: "postgres",
+        host: 'localhost',
+        port: 5432,
+        username: 'postgres',
+        password: 'boburbek',
+        database: 'postgres',
+        entities: [LessonEntity],
+        synchronize: true
+      }), LessonModule],
+    }).compile();
+
+    basic_app = moduleBasicFixture.createNestApplication();
+    await basic_app.init();
+    lessonBasicRepository = moduleBasicFixture.get<LessonRepository>(LessonRepository)
+    try{
+      await lessonBasicRepository.query('CREATE DATABASE testdb')
+    }catch(err){
+      await lessonBasicRepository.query(`SELECT 'CREATE DATABASE testdb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'testdb')`)
+    }
+    basic_app.close()
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [TypeOrmModule.forRoot({
         type: "postgres",
@@ -136,8 +161,8 @@ describe('Lesson Module (e2e)', () => {
       });
 
   afterAll(async () => {
-    await lessonRepository.query('DELETE FROM lesson_entity');
-    await courseRepository.query('DELETE FROM course_entity');
+    await lessonRepository.query('DROP TABLE lesson_entity');
+    await courseRepository.query('DROP TABLE course_entity');
     app.close()
   });
 });
